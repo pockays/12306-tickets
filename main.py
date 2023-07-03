@@ -15,11 +15,12 @@ class TrainSpider(object):
     profile_url = 'https://kyfw.12306.cn/otn/view/index.html'  # 个人中心的网址
     left_ticket = 'https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc'  # 余票查询
 
-    def __init__(self, from_station, to_station, train_date):
+    def __init__(self, from_station, to_station, train_date, trains):
         self.from_station = from_station
         self.to_station = to_station
         self.train_date = train_date
         self.station_code = self.init_station_code()
+        self.trains = trains
 
     def login(self):
         # 打开12306的网页
@@ -56,14 +57,56 @@ class TrainSpider(object):
 
     def search_ticket(self):
         driver.get(self.left_ticket)
+        # 获取元素
         from_station_input = driver.find_element(By.ID, 'fromStation')
         to_station_input = driver.find_element(By.ID, 'toStation')
         train_date_input = driver.find_element(By.ID, 'train_date')
+        # 通过目的地/出发地找到相应代号
         from_station_code = self.station_code[self.from_station]
         to_station_code = self.station_code[self.to_station]
+        # 填入代号
         driver.execute_script('arguments[0].value="%s"' % from_station_code, from_station_input)
         driver.execute_script('arguments[0].value="%s"' % to_station_code, to_station_input)
         driver.execute_script('arguments[0].value="%s"' % self.train_date, train_date_input)
+        # 查询
+        query_ticker_tag = driver.find_element(By.ID, 'query_ticket')
+        query_ticker_tag.click()
+        # 解析车次
+        WebDriverWait(driver, 1000).until(
+            ec.presence_of_element_located((By.XPATH, '//tbody[@id = "queryLeftTable"]/tr'))
+        )
+        trains = driver.find_elements(By.XPATH, '//tbody[@id = "queryLeftTable"]/tr[not(@datatran)])')
+        is_flag = False
+        for train in trains:
+            infos = train.text.split('\n')
+            train_no = infos[0] # 显示车次
+            if train_no in self.trains:    # 是否存在需求车次
+                seat_types = self.trains[train_no]
+                for seat_type in seat_types:  # 查找是否有位置
+                    if seat_type == 'o':  # 如果是二等座
+                        count = infos[9]
+                        if count.isdigit() or count == '有':
+                            is_flag = True
+                            break  # 退出席位循环
+                    elif seat_type == 'M':
+                        count = infos[8]
+                        if count.isdigit() or count == '有':
+                            is_flag = True
+                            break
+                # 是否有余票
+                if is_flag:
+                    order_btn = train.find_element(By.XPATH, './/a[@class="btn72"]')  # 注意是.// 表示当前路径，否则是在全局选择，而不是当前行
+                    order_btn.click()
+                    break  # 退出车次循环
+
+
+
+
+
+
+
+
+
 
     def run(self):
         # 登录
@@ -82,11 +125,9 @@ class TrainSpider(object):
             lst.append(sub_lst)
         return dict(lst)
 
-
-def start():
-    spider = TrainSpider('北京', '上海', '2023-07-03')
+    # def start():                                         o为二等座，m为一等座，9为商务座
+    spider = TrainSpider('葫芦岛', '大连', '2023-07-16', {'D30': ['o', 'M']})
     spider.run()
-    spider.search_ticket()
 
 
 if __name__ == '__main__':
