@@ -94,7 +94,7 @@ class TrainSpider(object):
                     )
                     trains = driver.find_elements(By.XPATH, '//tbody[@id = "queryLeftTable"]/tr[not(@datatran)]')
                     for train in trains:
-                        infos = train.text.replace('/n', ' ').split(' ')
+                        infos = train.text.replace('\n', ' ').split(' ')
                         train_no = infos[0]  # 显示车次
                         if train_no in self.trains:  # 是否存在需求车次
                             seat_types = self.trains[train_no]
@@ -127,7 +127,7 @@ class TrainSpider(object):
         )
         passengers = driver.find_elements(By.XPATH, '//ul[@id = "normal_passenger_id"]/li/label')
         for passenger in passengers:
-            passenger_name = passenger.text.replace('（学生）', '')  # 学生认证后会有（学生）
+            passenger_name = passenger.text.replace('(学生)', '')  # 学生认证后会有（学生）
             if passenger_name in self.passengers:
                 passenger.click()
                 # 选学生票会有弹窗
@@ -195,11 +195,12 @@ class TrainSpider(object):
 
 
 def start():  # o为二等座，m为一等座，9为商务座         票类别分为 成人票为1 儿童票为2 学生票为3 残军票为4    year,month, day,hour, minute,second,microsecond
-    spider = TrainSpider('葫芦岛', '大连', '2023-07-16', {'D8087': ['O', 'M']}, ['郭政熠'], '1',
-                         datetime.datetime(2023, 7, 6, 14, 30))
+    spider = TrainSpider('葫芦岛', '大连', '2023-07-13', {'G1253': ['O', 'M']}, ['郭政熠'], '1',
+                         datetime.datetime(2023, 7, 6, 10, 43))
     spider.run()
 
 
 if __name__ == '__main__':
     start()
     input('输入任意键结束')
+    driver.quit()
